@@ -2,7 +2,7 @@
 #include <PubSubClient.h>
 
 const char* ssid = "Dlink@unifi";
-const char* password = "0126627814AC";
+const char* password = "0126627814ABC";
 const char* mqttServer = "test.mosquitto.org";
 const int mqttPort = 1883;
 const char* mqttClientId = "ESP32-CAM";
