@@ -6,9 +6,11 @@
 #include <SoftwareSerial.h>
 
 #define Bluetooth
-// #define Wifi
+#define Wifi
 
 char data = "S";
+unsigned long prevTime_T1 = millis();
+unsigned long prevTime_T2 = millis();
 
 CytronMD motor1(PWM_PWM, 10, 9);   
 CytronMD motor2(PWM_PWM, 6, 5); 
@@ -21,20 +23,26 @@ void setup() {
 }
 
 void loop() {
-  #ifdef Bluetooth
+    #ifdef Bluetooth
   if (BTSerial.available()) {
+    unsigned long currentTime_T1 = millis();
     data = BTSerial.read();
-    MoveCondition(data);
     Serial.print(data);
+    if (currentTime_T1 - prevTime_T1 >= 5000) {
+      MoveCondition(data);
+    }
   }
   
   #endif
 
   #ifdef Wifi
   if (Serial.available()) {
+    unsigned long currentTime_T2 = millis();
     data = Serial.read();
-    MoveCondition();
     Serial.print(data);
+    if (currentTime_T2 - prevTime_T2 >= 20000){
+      MoveCondition(data);
+    }
   }
   #endif 
 }

@@ -20,6 +20,7 @@ const char* mqttServer = "test.mosquitto.org";
 const int mqttPort = 1883;
 const char* mqttClientId = "ESP32-CAM";
 const char* mqtt_topic = "topic/espCamCar";
+const char* mqtt_topic_ip = "topic/espCamCarIP";
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -168,6 +169,14 @@ void setup() {
 void loop() {
   // Do nothing. Everything is done in another task by the web server
   mqttClient.loop();
+
+  static unsigned long lastTime = 0;
+  unsigned long currentTime = millis();
+
+  if (currentTime - lastTime >= 20000) {
+    publishIPAddress();
+    lastTime = currentTime;
+  }
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -176,4 +185,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
+}
+
+void publishIPAddress() {
+  String ipAddress = WiFi.localIP().toString();
+  mqttClient.publish(mqtt_topic_ip, ipAddress.c_str());
 }
