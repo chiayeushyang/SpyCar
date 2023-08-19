@@ -9,17 +9,21 @@
 #define motor1Pin2 12
 #define motor1Pin3 8
 #define motor1Pin4 7
-#define SERVOPIN 11
 
-// #define Bluetooth
-// #define Wifi
+#define SERVOPIN 10
+
+#define trigPin A3
+#define echoPin A2
+
+#define Bluetooth
+#define Wifi
 
 ADS1115 ADS(0x48);
 
-CytronMD motor1(PWM_PWM, 10, 9);
-CytronMD motor2(PWM_PWM, 6, 5);
+CytronMD motor1(PWM_PWM, 11, 3); //M1A, M1B
+CytronMD motor2(PWM_PWM, 6, 5); //M2A, M2B
 
-SoftwareSerial BTSerial(2, 3);  // RX, TX
+SoftwareSerial BTSerial(9, 4);  // RX, TX
 
 char data = "S";
 
@@ -27,10 +31,13 @@ int16_t top_r;
 int16_t top_l;
 int16_t bot_r;
 int16_t bot_l;
-int avgtop;
-int avgbot;
-int avgleft;
-int avgright;
+
+unsigned int avg;
+unsigned int avgtop;
+unsigned int avgbot;
+unsigned int avgleft;
+unsigned int avgright;
+
 int diffelev;
 int diffazi;
 
@@ -53,12 +60,20 @@ unsigned long prevTime_T2 = millis();
 const int stepsPerRevolution = 2038;
 int totalSteps = 0;
 
+long duration;
+int distance;
+
+bool car_move = false;
+
 Stepper myStepper = Stepper(stepsPerRevolution, motor1Pin1, motor1Pin3, motor1Pin2, motor1Pin4);
 Servo servo_updown;
 
 void setup() {
-
   Serial.begin(115200);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
   BTSerial.begin(9600);
   myStepper.setSpeed(10);
   servo_updown.attach(SERVOPIN);
@@ -66,27 +81,34 @@ void setup() {
 }
 
 void loop() {
-  automaticsolartracker();
-  // myStepper.setSpeed(10);
-  // myStepper.step(stepsPerRevolution);
-  // delay(1000);
+  unsigned long currentTime_T3 = millis();
+  if (currentTime_T3 - prevTime_T2 >= 10000) {
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
 
-  // // Rotate CCW quickly at 10 RPM
-  // myStepper.setSpeed(10);
-  // myStepper.step(-stepsPerRevolution);
-  // delay(1000);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
 
+    duration = pulseIn(echoPin, HIGH);
 
-  // for (pos = servomin; pos <= servomax; pos += 1) { // goes from 0 degrees to 180 degrees
-  //   // in steps of 1 degree
-  //   myservo.write(pos);              // tell servo to go to position in variable 'pos'
-  //   delay(15);// waits 15ms for the servo to reach the position
-  // }
+    distance = duration * 0.034 / 2;
 
-  // for (pos = servomax; pos >= servomin; pos -= 1) { // goes from 180 degrees to 0 degrees
-  //   myservo.write(pos);              // tell servo to go to position in variable 'pos'
-  //   delay(15);                      // waits 15ms for the servo to reach the position
-  // }
+    // if (distance < 50) {
+    //   robotMove(100, 100);
+    //   car_move = true;
+    // } else if(distance < 70) {
+    //   robotMove(0, 0);
+    //   car_move = false;
+    // } else if(distance < 120) {
+    //   robotMove(-100, -100);
+    //   car_move = true;
+    // }
+
+    if (car_move == false) {
+      automaticsolartracker();
+    }
+  }
 
 #ifdef Bluetooth
   if (BTSerial.available()) {
@@ -119,20 +141,33 @@ void robotMove(int sppeedLeft, int speedRight) {
 
 void MoveCondition(char data) {
   switch (data) {
-    case 'S':
+    case '|':
       robotMove(0, 0);
+      car_move = false;
       break;
-    case 'F':
+    case '^':
       robotMove(-230, -230);
+      car_move = true;
       break;
-    case 'B':
+    case '!':
       robotMove(230, 230);
+      car_move = true;
       break;
-    case 'L':
-      robotMove(170, -170);
+    case '<':
+      robotMove(120, -120);
+      car_move = true;
       break;
-    case 'R':
-      robotMove(-170, 170);
+    case '>':
+      robotMove(-120, 120);
+      car_move = true;
+      break;
+    case '[':
+      robotMove(80, -80);
+      car_move = true;
+      break;
+    case ']':
+      robotMove(-80, 80);
+      car_move = true;
       break;
     default:
       break;
@@ -150,47 +185,48 @@ void automaticsolartracker() {
   avgleft = (top_l + bot_l) / 2;
   avgright = (top_r + bot_r) / 2;
 
+  avg = (top_r + bot_r + top_l + bot_l) / 4;
+
   diffelev = avgtop - avgbot;
   diffazi = avgright - avgleft;
 
-  if (abs(diffazi) >= THRESHOLD_VALUE) {
-    if (abs(totalSteps) >= 2038 * 100 / 360) {
-      myStepper.setSpeed(0);  // Stop the stepper motor
-      totalSteps = 0;         // Reset the totalSteps variable
-    } else {
+  if (avg > 2000) {
+    if (abs(diffazi) >= THRESHOLD_VALUE) {
       if (servo_updown.read() < 75) {
         if (diffazi < 0) {
           myStepper.setSpeed(10);
-          myStepper.step(-100);
+          myStepper.step(-10);
+          totalSteps -= 10;
         } else if (diffazi > 0) {
           myStepper.setSpeed(10);
-          myStepper.step(100);
+          myStepper.step(10);
+          totalSteps += 10;
         }
       } else {
         if (diffazi > 0) {
           myStepper.setSpeed(10);
-          myStepper.step(-100);
+          myStepper.step(-10);
+          totalSteps -= 10;
         } else if (diffazi < 0) {
           myStepper.setSpeed(10);
-          myStepper.step(100);
+          myStepper.step(10);
+          totalSteps += 10;
         }
       }
     }
-  }
 
-  if (abs(diffelev) >= THRESHOLD_VALUE) {
-    if (diffelev > 0) {
-      Serial.println(servo_updown.read());
-      if (servo_updown.read() < SERVO_MAX) {
-        servo_updown.write((servo_updown.read() + 2));
-        delay(SERVO_SMOOTH);
+    if (abs(diffelev) >= THRESHOLD_VALUE) {
+      if (diffelev > 0) {
+        if (servo_updown.read() < SERVO_MAX) {
+          servo_updown.write((servo_updown.read() + 2));
+          delay(SERVO_SMOOTH);
+        }
       }
-    }
-    if (diffelev < 0) {
-      Serial.println(servo_updown.read());
-      if (servo_updown.read() > SERVO_MIN) {
-        servo_updown.write((servo_updown.read() - 2));
-        delay(SERVO_SMOOTH);
+      if (diffelev < 0) {
+        if (servo_updown.read() > SERVO_MIN) {
+          servo_updown.write((servo_updown.read() - 2));
+          delay(SERVO_SMOOTH);
+        }
       }
     }
   }

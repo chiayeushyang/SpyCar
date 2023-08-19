@@ -3,7 +3,7 @@
 
 const char* ssid = "Dlink@unifi";
 const char* password = "0126627814ABC";
-const char* mqttServer = "test.mosquitto.org";
+const char* mqttServer = "flypi";
 const int mqttPort = 1883;
 const char* mqttClientId = "ESP32-CAM";
 const char* mqttTopic = "topic/espCamCar";

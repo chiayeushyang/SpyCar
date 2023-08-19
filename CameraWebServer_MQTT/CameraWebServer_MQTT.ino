@@ -9,6 +9,7 @@
 const char* ssid = "Dlink@unifi";
 const char* password = "0126627814ABC";
 const char* mqttServer = "test.mosquitto.org";
+// const char* mqttServer = "192.168.0.23";
 const int mqttPort = 1883;
 const char* mqttClientId = "ESP32-CAM";
 const char* mqtt_topic = "topic/espCamCar";
@@ -115,16 +116,16 @@ void setup() {
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    Serial.print("|");
   }
-  Serial.println("");
-  Serial.println("WiFi connected");
+  // Serial.println("");
+  // Serial.println("WiFi connected");
 
   startCameraServer();
 
-  Serial.print("Camera Ready! Use 'http://");
+  // Serial.print("Camera Ready! Use 'http://");
   Serial.print(WiFi.localIP());
-  Serial.println("' to connect");
+  // Serial.println("' to connect");
 
   // MQTT
   mqttClient.setServer(mqttServer, mqttPort);
@@ -145,6 +146,7 @@ void setup() {
 }
 
 void loop() {
+
   mqttClient.loop();
 
   static unsigned long lastTime = 0;
@@ -157,7 +159,6 @@ void loop() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Received message: ");
   for (int i = 0; i < length; i++) {
     Serial.print((char)payload[i]);
   }

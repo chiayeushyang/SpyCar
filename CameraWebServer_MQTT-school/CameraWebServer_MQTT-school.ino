@@ -180,7 +180,6 @@ void loop() {
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Received message: ");
   for (int i = 0; i < length; i++) {
     Serial.print((char)payload[i]);
   }
