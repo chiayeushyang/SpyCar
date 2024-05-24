@@ -11,6 +11,7 @@
 #define motor1Pin4 7
 
 #define SERVOPIN 10
+#define buttonPin 2
 
 #define trigPin A3
 #define echoPin A2
@@ -20,12 +21,13 @@
 
 ADS1115 ADS(0x48);
 
-CytronMD motor1(PWM_PWM, 11, 3); //M1A, M1B
-CytronMD motor2(PWM_PWM, 6, 5); //M2A, M2B
+CytronMD motor1(PWM_PWM, 11, 3);  //M1A, M1B
+CytronMD motor2(PWM_PWM, 6, 5);   //M2A, M2B
 
 SoftwareSerial BTSerial(9, 4);  // RX, TX
 
 char data = "S";
+bool ultrasonicEnable = false;
 
 int16_t top_r;
 int16_t top_l;
@@ -56,6 +58,9 @@ int pos = SERVO_MIN;
 
 unsigned long prevTime_T1 = millis();
 unsigned long prevTime_T2 = millis();
+unsigned long buttonPressTime;
+unsigned long buttonReleaseTime;
+unsigned long buttonPressDuration;
 
 const int stepsPerRevolution = 2038;
 int totalSteps = 0;
@@ -94,16 +99,25 @@ void loop() {
 
     distance = duration * 0.034 / 2;
 
-    // if (distance < 50) {
-    //   robotMove(100, 100);
-    //   car_move = true;
-    // } else if(distance < 70) {
-    //   robotMove(0, 0);
-    //   car_move = false;
-    // } else if(distance < 120) {
-    //   robotMove(-100, -100);
-    //   car_move = true;
-    // }
+
+
+    int buttonState = digitalRead(buttonPin);
+    if (buttonState == LOW) {
+      buttonPressTime = millis();
+    } else {
+      buttonReleaseTime = millis();
+      buttonPressDuration = buttonReleaseTime - buttonPressTime;
+    }
+
+    if (buttonPressDuration < 5000) {
+      ultrasonicEnable = false;
+    }else {
+      ultrasonicEnable = true;
+    }
+
+    if (ultrasonicEnable) {
+      distanceMaintain();
+    }
 
     if (car_move == false) {
       automaticsolartracker();
@@ -174,6 +188,19 @@ void MoveCondition(char data) {
   }
 }
 
+void distanceMaintain() {
+  if (distance < 50) {
+    robotMove(100, 100);
+    car_move = true;
+  } else if (distance < 70) {
+    robotMove(0, 0);
+    car_move = false;
+  } else if (distance < 90) {
+    robotMove(-100, -100);
+    car_move = true;
+  }
+}
+
 void automaticsolartracker() {
   top_r = ADS.readADC(ldrRightTopChannel);  //top right
   bot_r = ADS.readADC(ldrRightBotChannel);  //bot right
@@ -193,16 +220,6 @@ void automaticsolartracker() {
   if (avg > 2000) {
     if (abs(diffazi) >= THRESHOLD_VALUE) {
       if (servo_updown.read() < 75) {
-        if (diffazi < 0) {
-          myStepper.setSpeed(10);
-          myStepper.step(-10);
-          totalSteps -= 10;
-        } else if (diffazi > 0) {
-          myStepper.setSpeed(10);
-          myStepper.step(10);
-          totalSteps += 10;
-        }
-      } else {
         if (diffazi > 0) {
           myStepper.setSpeed(10);
           myStepper.step(-10);
@@ -212,17 +229,27 @@ void automaticsolartracker() {
           myStepper.step(10);
           totalSteps += 10;
         }
+      } else {
+        if (diffazi < 0) {
+          myStepper.setSpeed(10);
+          myStepper.step(-10);
+          totalSteps -= 10;
+        } else if (diffazi > 0) {
+          myStepper.setSpeed(10);
+          myStepper.step(10);
+          totalSteps += 10;
+        }
       }
     }
 
     if (abs(diffelev) >= THRESHOLD_VALUE) {
-      if (diffelev > 0) {
+      if (diffelev < 0) {
         if (servo_updown.read() < SERVO_MAX) {
           servo_updown.write((servo_updown.read() + 2));
           delay(SERVO_SMOOTH);
         }
       }
-      if (diffelev < 0) {
+      if (diffelev > 0) {
         if (servo_updown.read() > SERVO_MIN) {
           servo_updown.write((servo_updown.read() - 2));
           delay(SERVO_SMOOTH);

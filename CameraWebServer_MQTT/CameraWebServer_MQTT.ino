@@ -8,12 +8,16 @@
 
 const char* ssid = "Dlink@unifi";
 const char* password = "0126627814ABC";
-const char* mqttServer = "test.mosquitto.org";
-// const char* mqttServer = "192.168.0.23";
+// const char* mqttServer = "w33.kynoci.com";
+const char* mqttServer = "192.168.0.226";
 const int mqttPort = 1883;
 const char* mqttClientId = "ESP32-CAM";
+// const char* mqtt_username = "newera";
+// const char* mqtt_password = "newera2023";
 const char* mqtt_topic = "topic/espCamCar";
 const char* mqtt_topic_ip = "topic/espCamCarIP";
+const char* mqtt_user = "mqtt-user";
+const char* mqtt_password = "qazqaz123";
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -133,7 +137,7 @@ void setup() {
 
   while (!mqttClient.connected()) {
     Serial.println("Connecting to MQTT...");
-    if (mqttClient.connect(mqttClientId)) {
+    if (mqttClient.connect(mqttClientId, mqtt_user, mqtt_password)) {
       Serial.println("Connected to MQTT");
       mqttClient.subscribe(mqtt_topic);
     } else {
